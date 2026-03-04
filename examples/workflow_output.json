@@ -1,0 +1,175 @@
+{
+  "workflow_id": "724ae2db-7cbc-4290-a3dc-4aa1a6ad66b9",
+  "user_request": "I want to build a podcast summariser that takes audio, transcribes it, summarises the text, and generates a short audio summary.",
+  "task_analysis": "The user wants to build a system that transcribes audio from a podcast, summarises the text, and generates a short audio summary.",
+  "status": "completed",
+  "created_at": "2026-03-04T19:53:40.945632",
+  "total_estimated_cost_per_run": 8.4e-05,
+  "total_estimated_latency": 0.47,
+  "error": null,
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Transcribe Audio",
+      "description": "Convert spoken words in the audio to text.",
+      "capability": "speech_to_text",
+      "recommended_model": "openai/whisper-large-v3",
+      "model_display_name": "Whisper-Large-v3",
+      "avg_quality_score": 0.0,
+      "avg_latency_seconds": 0.0,
+      "estimated_cost_usd": 0.0,
+      "alternatives": [
+        "openai/whisper-large-v3-turbo"
+      ],
+      "input_description": "Audio file of a podcast episode",
+      "output_description": "Transcribed text of the podcast episode"
+    },
+    {
+      "step_number": 2,
+      "title": "Summarise Text",
+      "description": "Generate a summary of the transcribed text.",
+      "capability": "summarization",
+      "recommended_model": "Qwen/Qwen2.5-7B-Instruct",
+      "model_display_name": "Qwen2.5-7B",
+      "avg_quality_score": 0.6485,
+      "avg_latency_seconds": 0.47,
+      "estimated_cost_usd": 8.4e-05,
+      "alternatives": [
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "meta-llama/Llama-3.2-3B-Instruct"
+      ],
+      "input_description": "Transcribed text of the podcast episode",
+      "output_description": "Summary of the podcast episode"
+    },
+    {
+      "step_number": 3,
+      "title": "Generate Audio Summary",
+      "description": "Convert the summary text into an audio file.",
+      "capability": "text_to_speech",
+      "recommended_model": "facebook/mms-tts-eng",
+      "model_display_name": "MMS-TTS-English",
+      "avg_quality_score": 0.0,
+      "avg_latency_seconds": 0.0,
+      "estimated_cost_usd": 0.0,
+      "alternatives": [
+        "espnet/kan-bayashi_ljspeech_vits"
+      ],
+      "input_description": "Summary of the podcast episode",
+      "output_description": "Short audio summary of the podcast episode"
+    }
+  ],
+  "step_benchmarks": [
+    {
+      "step_number": 1,
+      "step_title": "Transcribe Audio",
+      "capability": "speech_to_text",
+      "candidates_tested": 2,
+      "recommended_model": "openai/whisper-large-v3",
+      "recommendation_reason": "Recommended openai/whisper-large-v3 as the primary candidate for speech_to_text. Non-text models are ranked by known quality characteristics rather than live benchmarking.",
+      "rankings": [
+        {
+          "model_id": "openai/whisper-large-v3",
+          "rank": 1,
+          "avg_quality_score": 0.0,
+          "avg_latency_seconds": 0.0,
+          "estimated_cost_usd": 0.0,
+          "scores": {},
+          "output_sample": "[Whisper-Large-v3] \u2014 Specialized speech_to_text model. Live benchmarking requires modality-specific evaluation.",
+          "error": null
+        },
+        {
+          "model_id": "openai/whisper-large-v3-turbo",
+          "rank": 2,
+          "avg_quality_score": 0.0,
+          "avg_latency_seconds": 0.0,
+          "estimated_cost_usd": 0.0,
+          "scores": {},
+          "output_sample": "[Whisper-Large-v3-Turbo] \u2014 Specialized speech_to_text model. Live benchmarking requires modality-specific evaluation.",
+          "error": null
+        }
+      ]
+    },
+    {
+      "step_number": 2,
+      "step_title": "Summarise Text",
+      "capability": "summarization",
+      "candidates_tested": 3,
+      "recommended_model": "Qwen/Qwen2.5-7B-Instruct",
+      "recommendation_reason": "Recommended Qwen/Qwen2.5-7B-Instruct for 'Summarise Text'. | Quality: 0.648 | Latency: 0.47s | Runner-up: meta-llama/Llama-3.1-8B-Instruct (quality=0.782, latency=1.14s)",
+      "rankings": [
+        {
+          "model_id": "Qwen/Qwen2.5-7B-Instruct",
+          "rank": 1,
+          "avg_quality_score": 0.6485,
+          "avg_latency_seconds": 0.47,
+          "estimated_cost_usd": 8.4e-05,
+          "scores": {
+            "completeness": 0.4,
+            "coherence": 1.0,
+            "relevance": 0.5455
+          },
+          "output_sample": "The text is a sample for summarization.",
+          "error": null
+        },
+        {
+          "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+          "rank": 2,
+          "avg_quality_score": 0.7818,
+          "avg_latency_seconds": 1.142,
+          "estimated_cost_usd": 0.000132,
+          "scores": {
+            "completeness": 0.8,
+            "coherence": 1.0,
+            "relevance": 0.5455
+          },
+          "output_sample": "The text is a sample for summarization purposes, containing no specific information to summarize.",
+          "error": null
+        },
+        {
+          "model_id": "meta-llama/Llama-3.2-3B-Instruct",
+          "rank": 3,
+          "avg_quality_score": 0.7818,
+          "avg_latency_seconds": 2.752,
+          "estimated_cost_usd": 0.000168,
+          "scores": {
+            "completeness": 0.8,
+            "coherence": 1.0,
+            "relevance": 0.5455
+          },
+          "output_sample": "There is no text to summarize. You provided a sample text for summarization, but no actual text was given. Please provide the text you would like me to summarize.",
+          "error": null
+        }
+      ]
+    },
+    {
+      "step_number": 3,
+      "step_title": "Generate Audio Summary",
+      "capability": "text_to_speech",
+      "candidates_tested": 2,
+      "recommended_model": "facebook/mms-tts-eng",
+      "recommendation_reason": "Recommended facebook/mms-tts-eng as the primary candidate for text_to_speech. Non-text models are ranked by known quality characteristics rather than live benchmarking.",
+      "rankings": [
+        {
+          "model_id": "facebook/mms-tts-eng",
+          "rank": 1,
+          "avg_quality_score": 0.0,
+          "avg_latency_seconds": 0.0,
+          "estimated_cost_usd": 0.0,
+          "scores": {},
+          "output_sample": "[MMS-TTS-English] \u2014 Specialized text_to_speech model. Live benchmarking requires modality-specific evaluation.",
+          "error": null
+        },
+        {
+          "model_id": "espnet/kan-bayashi_ljspeech_vits",
+          "rank": 2,
+          "avg_quality_score": 0.0,
+          "avg_latency_seconds": 0.0,
+          "estimated_cost_usd": 0.0,
+          "scores": {},
+          "output_sample": "[ESPnet-VITS] \u2014 Specialized text_to_speech model. Live benchmarking requires modality-specific evaluation.",
+          "error": null
+        }
+      ]
+    }
+  ]
+}

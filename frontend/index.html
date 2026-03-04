@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Evaluation Arena</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50:  '#eef5ff', 100: '#d9e8ff', 200: '#bcd8ff', 300: '#8ec0ff',
+              400: '#59a0ff', 500: '#3380ff', 600: '#1a5ff5', 700: '#1349e1',
+              800: '#163cb6', 900: '#18378f', DEFAULT: '#3380ff',
+            },
+            surface: {
+              50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0',
+              700: '#1e293b', 800: '#0f172a', 900: '#020617',
+            }
+          },
+          animation: {
+            'fade-in':     'fadeIn 0.5s ease-out',
+            'slide-up':    'slideUp 0.5s ease-out',
+            'slide-right': 'slideRight 0.4s ease-out',
+            'pulse-soft':  'pulseSoft 2s ease-in-out infinite',
+            'float':       'float 3s ease-in-out infinite',
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-surface-900 text-gray-100 font-sans min-h-screen antialiased">
+
+  <!-- ═══════════════════════════════ NAV ═══════════════════════════════ -->
+  <nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-surface-900/80 border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <a href="#" onclick="navigateTo('home')" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center shadow-lg shadow-brand-500/25 group-hover:shadow-brand-500/40 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <span class="text-lg font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Arena</span>
+        </a>
+        <!-- Links -->
+        <div class="flex items-center gap-1">
+          <button onclick="navigateTo('home')"      class="nav-link" data-page="home">Home</button>
+          <button onclick="navigateTo('workflow')"   class="nav-link" data-page="workflow">Workflow Builder</button>
+          <button onclick="navigateTo('benchmark')"  class="nav-link" data-page="benchmark">Benchmark</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Spacer for fixed nav -->
+  <div class="h-16"></div>
+
+  <!-- ═══════════════════════════ HOME PAGE ═══════════════════════════ -->
+  <section id="page-home" class="page">
+    <!-- Hero -->
+    <div class="relative overflow-hidden">
+      <!-- Gradient orbs -->
+      <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl animate-pulse-soft"></div>
+      <div class="absolute -top-20 right-0  w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse-soft" style="animation-delay:1s"></div>
+
+      <div class="relative max-w-5xl mx-auto px-4 pt-24 pb-20 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium mb-8 animate-fade-in">
+          <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+          Powered by HuggingFace Inference API
+        </div>
+
+        <h1 class="text-5xl sm:text-7xl font-black tracking-tight mb-6 animate-slide-up">
+          <span class="bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">Open Source</span><br/>
+          <span class="bg-gradient-to-r from-brand-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Model Arena</span>
+        </h1>
+
+        <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-12 animate-slide-up" style="animation-delay:0.1s">
+          Describe what you want to build. Our AI decomposes your idea into steps,
+          benchmarks the best open-source models for each, and delivers a complete pipeline recommendation.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style="animation-delay:0.2s">
+          <button onclick="navigateTo('workflow')" class="btn-primary text-lg px-8 py-3.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            Build a Workflow
+          </button>
+          <button onclick="navigateTo('benchmark')" class="btn-secondary text-lg px-8 py-3.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Benchmark Models
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature cards -->
+    <div class="max-w-6xl mx-auto px-4 pb-24">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="card group animate-slide-up" style="animation-delay:0.3s">
+          <div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">AI Task Decomposition</h3>
+          <p class="text-gray-400 text-sm">An LLM analyses your request and breaks it into capability-tagged pipeline steps — text, voice, image, code, and more.</p>
+        </div>
+        <div class="card group animate-slide-up" style="animation-delay:0.4s">
+          <div class="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Live Model Benchmarks</h3>
+          <p class="text-gray-400 text-sm">Candidate models are tested in real-time via the HuggingFace API and scored on quality, latency, and cost.</p>
+        </div>
+        <div class="card group animate-slide-up" style="animation-delay:0.5s">
+          <div class="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center mb-4 group-hover:bg-pink-500/20 transition-colors">
+            <svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Pipeline Recommendations</h3>
+          <p class="text-gray-400 text-sm">Get a complete workflow with the best model for every step, alternatives, and detailed performance metrics.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ WORKFLOW BUILDER PAGE ═══════════════════════ -->
+  <section id="page-workflow" class="page hidden">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <!-- Header -->
+      <div class="mb-10">
+        <h2 class="text-3xl font-bold mb-2">
+          <span class="bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">Intelligent Workflow Builder</span>
+        </h2>
+        <p class="text-gray-400">Describe your project and let AI find the best model for every step.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- ─── Left: Input Panel ─── -->
+        <div class="lg:col-span-3 space-y-6">
+          <!-- Prompt input -->
+          <div class="card">
+            <label class="block text-sm font-medium text-gray-300 mb-3">What do you want to build?</label>
+            <textarea
+              id="wf-input"
+              rows="4"
+              class="w-full bg-surface-800 border border-white/10 rounded-xl px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 resize-none transition"
+              placeholder="e.g., I want to build a voice assistant that translates languages and summarises documents…"
+            ></textarea>
+
+            <!-- Example chips -->
+            <div class="mt-4">
+              <span class="text-xs text-gray-500 uppercase tracking-wider font-medium">Try an example:</span>
+              <div class="flex flex-wrap gap-2 mt-2" id="example-chips"></div>
+            </div>
+          </div>
+
+          <!-- Build button -->
+          <button id="btn-build" onclick="buildWorkflow()" class="btn-primary w-full py-3.5 text-base" disabled>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Build Workflow
+          </button>
+
+          <!-- Loading state -->
+          <div id="wf-loading" class="hidden">
+            <div class="card text-center py-16">
+              <div class="loader mx-auto mb-6"></div>
+              <h3 class="text-xl font-semibold mb-2">Building your workflow…</h3>
+              <p class="text-gray-400" id="wf-loading-msg">Decomposing your request into pipeline steps</p>
+              <div class="mt-6 flex justify-center gap-8 text-sm text-gray-500">
+                <div id="phase-1" class="flex items-center gap-2 phase-active">
+                  <div class="phase-dot"></div> Decomposing
+                </div>
+                <div id="phase-2" class="flex items-center gap-2">
+                  <div class="phase-dot"></div> Benchmarking
+                </div>
+                <div id="phase-3" class="flex items-center gap-2">
+                  <div class="phase-dot"></div> Ranking
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div id="wf-error" class="hidden">
+            <div class="card border-red-500/30 bg-red-500/5">
+              <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <h4 class="font-semibold text-red-300">Something went wrong</h4>
+                  <p class="text-red-400/80 text-sm mt-1" id="wf-error-msg"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── Results ─── -->
+          <div id="wf-results" class="hidden space-y-6">
+            <!-- Summary bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="wf-summary"></div>
+
+            <!-- Tabs -->
+            <div class="card !p-0 overflow-hidden">
+              <div class="flex border-b border-white/5">
+                <button class="wf-tab active" data-tab="pipeline" onclick="switchWfTab('pipeline')">Pipeline</button>
+                <button class="wf-tab" data-tab="benchmarks" onclick="switchWfTab('benchmarks')">Benchmarks</button>
+                <button class="wf-tab" data-tab="diagram" onclick="switchWfTab('diagram')">Diagram</button>
+                <button class="wf-tab" data-tab="json" onclick="switchWfTab('json')">JSON</button>
+              </div>
+
+              <div id="wf-tab-pipeline"   class="wf-tab-content p-6"></div>
+              <div id="wf-tab-benchmarks"  class="wf-tab-content p-6 hidden"></div>
+              <div id="wf-tab-diagram"     class="wf-tab-content p-6 hidden"></div>
+              <div id="wf-tab-json"        class="wf-tab-content p-6 hidden"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Right: Config sidebar ─── -->
+        <div class="space-y-6">
+          <div class="card">
+            <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Configuration</h3>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Decomposer Model</label>
+            <select id="cfg-decomposer" class="input-field mb-4">
+              <option value="Qwen/Qwen2.5-7B-Instruct">Qwen 2.5-7B</option>
+              <option value="meta-llama/Llama-3.1-8B-Instruct">Llama 3.1-8B</option>
+            </select>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Quality Weight</label>
+            <input type="range" id="cfg-quality" min="0" max="1" step="0.05" value="0.60" class="range-slider mb-1" oninput="document.getElementById('cfg-quality-v').textContent=this.value" />
+            <div class="text-right text-xs text-gray-500 mb-4" id="cfg-quality-v">0.60</div>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Latency Weight</label>
+            <input type="range" id="cfg-latency" min="0" max="1" step="0.05" value="0.25" class="range-slider mb-1" oninput="document.getElementById('cfg-latency-v').textContent=this.value" />
+            <div class="text-right text-xs text-gray-500 mb-4" id="cfg-latency-v">0.25</div>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Cost Weight</label>
+            <input type="range" id="cfg-cost" min="0" max="1" step="0.05" value="0.15" class="range-slider mb-1" oninput="document.getElementById('cfg-cost-v').textContent=this.value" />
+            <div class="text-right text-xs text-gray-500" id="cfg-cost-v">0.15</div>
+          </div>
+
+          <!-- Capability legend -->
+          <div class="card">
+            <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Capabilities</h3>
+            <div class="space-y-2 text-xs" id="capability-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ BENCHMARK PAGE ═══════════════════════ -->
+  <section id="page-benchmark" class="page hidden">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <div class="mb-10">
+        <h2 class="text-3xl font-bold mb-2">
+          <span class="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">Model Benchmark</span>
+        </h2>
+        <p class="text-gray-400">Compare HuggingFace models head-to-head on specific tasks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Config -->
+        <div class="space-y-6">
+          <div class="card">
+            <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Configuration</h3>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Task Type</label>
+            <select id="bm-task" class="input-field mb-4">
+              <option value="summarization">Summarization</option>
+              <option value="qa">Question Answering</option>
+              <option value="coding">Coding</option>
+              <option value="reasoning">Reasoning</option>
+            </select>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Models</label>
+            <div class="space-y-2 mb-4" id="bm-model-checks"></div>
+
+            <label class="block text-xs text-gray-400 mb-1.5">Max Samples</label>
+            <input type="number" id="bm-samples" min="1" max="200" value="5" class="input-field mb-4" />
+
+            <button id="btn-benchmark" onclick="runBenchmark()" class="btn-primary w-full py-2.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Run Benchmark
+            </button>
+          </div>
+        </div>
+
+        <!-- Results area -->
+        <div class="lg:col-span-3">
+          <!-- Benchmark loading -->
+          <div id="bm-loading" class="hidden">
+            <div class="card text-center py-16">
+              <div class="loader mx-auto mb-6"></div>
+              <h3 class="text-xl font-semibold mb-2">Running benchmark…</h3>
+              <p class="text-gray-400">Sending prompts to models and scoring results</p>
+            </div>
+          </div>
+
+          <!-- Benchmark error -->
+          <div id="bm-error" class="hidden">
+            <div class="card border-red-500/30 bg-red-500/5">
+              <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <h4 class="font-semibold text-red-300">Benchmark failed</h4>
+                  <p class="text-red-400/80 text-sm mt-1" id="bm-error-msg"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Benchmark results -->
+          <div id="bm-results" class="hidden space-y-6">
+            <div class="card !p-0 overflow-hidden">
+              <div class="flex border-b border-white/5">
+                <button class="bm-tab active" data-tab="leaderboard" onclick="switchBmTab('leaderboard')">Leaderboard</button>
+                <button class="bm-tab" data-tab="bm-charts" onclick="switchBmTab('bm-charts')">Charts</button>
+                <button class="bm-tab" data-tab="bm-json" onclick="switchBmTab('bm-json')">JSON</button>
+              </div>
+              <div id="bm-tab-leaderboard" class="bm-tab-content p-6"></div>
+              <div id="bm-tab-bm-charts"   class="bm-tab-content p-6 hidden"></div>
+              <div id="bm-tab-bm-json"     class="bm-tab-content p-6 hidden"></div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div id="bm-empty" class="card text-center py-20">
+            <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <p class="text-gray-500">Configure and run a benchmark to see results.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+  <footer class="border-t border-white/5 py-8 mt-20">
+    <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-600">
+      Open Source Model Evaluation Arena &middot; Powered by HuggingFace · FastAPI · Python
+    </div>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-[100] space-y-3"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
