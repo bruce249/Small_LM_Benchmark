@@ -150,8 +150,8 @@ class WorkflowOptimizerAgent:
                 # Text-based: benchmark all candidates via chat completion
                 benchmark = await self._benchmark_chat_step(step, candidates)
             else:
-                # Non-text: produce a descriptive benchmark (can't easily chat-complete)
-                benchmark = self._describe_non_chat_step(step, candidates)
+                # Non-text: benchmark using modality-specific HF inference endpoints
+                benchmark = await self._benchmark_non_chat_step(step, candidates)
 
             step_benchmarks.append(benchmark)
 
@@ -343,34 +343,37 @@ class WorkflowOptimizerAgent:
                 error=str(exc),
             )
 
-    # ── Non-chat step handling ────────────────────────────────────────
+    # ── Non-chat step benchmarking (audio / image / embedding) ──────
 
-    def _describe_non_chat_step(
+    async def _benchmark_non_chat_step(
         self,
         step: PipelineStep,
         candidates: list[CandidateModel],
     ) -> StepBenchmarkResult:
-        """For non-chat models (image, audio), provide candidate info without live benchmarking.
+        """Benchmark non-chat models using their native HF Inference endpoints.
 
-        We can't easily benchmark image/audio models via chat completion,
-        so we rank by metadata / known performance characteristics.
+        Supports: text_to_speech, automatic_speech_recognition, text_to_image,
+        image_classification, image_to_text, object_detection,
+        feature_extraction (embedding), sentence_similarity.
         """
-        rankings: list[StepModelRanking] = []
-        for i, c in enumerate(candidates):
-            rankings.append(
-                StepModelRanking(
-                    model_id=c.model_id,
-                    rank=i + 1,
-                    avg_quality_score=0.0,  # Can't benchmark non-chat via text
-                    avg_latency_seconds=0.0,
-                    estimated_cost_usd=0.0,
-                    scores={},
-                    output_sample=f"[{c.display_name}] — Specialized {step.capability.value} model. "
-                    f"Live benchmarking requires modality-specific evaluation.",
-                )
-            )
+        coros = [
+            self._run_non_chat_model(step, c) for c in candidates
+        ]
+        raw_results = await asyncio.gather(*coros, return_exceptions=True)
 
-        recommended = candidates[0].model_id if candidates else "unknown"
+        rankings: list[StepModelRanking] = []
+        for result in raw_results:
+            if isinstance(result, Exception):
+                logger.error("Non-chat benchmark exception: %s", result)
+                continue
+            rankings.append(result)
+
+        # Sort and rank
+        rankings = self._rank(rankings)
+        recommended = rankings[0].model_id if rankings else (
+            candidates[0].model_id if candidates else "unknown"
+        )
+        reason = self._build_reason(rankings, step)
 
         return StepBenchmarkResult(
             step_number=step.step_number,
@@ -379,12 +382,259 @@ class WorkflowOptimizerAgent:
             candidates_tested=len(rankings),
             rankings=rankings,
             recommended_model=recommended,
-            recommendation_reason=(
-                f"Recommended {recommended} as the primary candidate for "
-                f"{step.capability.value}. Non-text models are ranked by "
-                f"known quality characteristics rather than live benchmarking."
-            ),
+            recommendation_reason=reason,
         )
+
+    async def _run_non_chat_model(
+        self,
+        step: PipelineStep,
+        candidate: CandidateModel,
+    ) -> StepModelRanking:
+        """Run a single non-chat model via its native HF inference endpoint."""
+        async with self._semaphore:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, self._call_non_chat_sync, step, candidate
+            )
+
+    def _call_non_chat_sync(
+        self,
+        step: PipelineStep,
+        candidate: CandidateModel,
+    ) -> StepModelRanking:
+        """Synchronous call to a non-chat HF inference endpoint via httpx."""
+        model_id = candidate.model_id
+        capability = step.capability
+        start = time.perf_counter()
+
+        try:
+            result_info = self._dispatch_non_chat(model_id, capability, step)
+            elapsed = time.perf_counter() - start
+
+            logger.info(
+                "Non-chat model %s responded in %.2fs – %s",
+                model_id, elapsed, result_info.get("summary", "OK"),
+            )
+
+            quality = result_info.get("quality", 0.7)
+
+            return StepModelRanking(
+                model_id=model_id,
+                avg_quality_score=round(quality, 4),
+                avg_latency_seconds=round(elapsed, 3),
+                estimated_cost_usd=round(elapsed * 0.0001, 6),
+                scores=result_info.get("scores", {}),
+                output_sample=result_info.get("summary", "Model responded successfully."),
+            )
+
+        except Exception as exc:
+            elapsed = time.perf_counter() - start
+            logger.error("Non-chat model %s failed: %s", model_id, exc)
+            return StepModelRanking(
+                model_id=model_id,
+                avg_quality_score=0.0,
+                avg_latency_seconds=round(elapsed, 3),
+                estimated_cost_usd=0.0,
+                error=str(exc),
+            )
+
+    def _hf_inference_post(self, model_id: str, payload: dict | bytes, is_binary_input: bool = False, content_type: str = "audio/wav") -> httpx.Response:
+        """Make a raw POST to the HF Inference API for a model."""
+        url = f"https://router.huggingface.co/hf-inference/models/{model_id}"
+        headers = {}
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+
+        if is_binary_input:
+            headers["Content-Type"] = content_type
+            return httpx.post(url, content=payload, headers=headers, timeout=60)
+        else:
+            return httpx.post(url, json=payload, headers=headers, timeout=60)
+
+    def _dispatch_non_chat(
+        self,
+        model_id: str,
+        capability: Capability,
+        step: PipelineStep,
+    ) -> dict:
+        """Route to the correct HF Inference API endpoint based on capability."""
+
+        if capability == Capability.TEXT_TO_SPEECH:
+            test_text = step.test_prompt or "Hello, this is a benchmark test for text-to-speech synthesis quality."
+            resp = self._hf_inference_post(model_id, {"inputs": test_text})
+            resp.raise_for_status()
+            audio_bytes = resp.content
+            size = len(audio_bytes) if audio_bytes else 0
+            quality = min(1.0, size / 5000)
+            return {
+                "summary": f"Generated {size:,} bytes of audio",
+                "quality": max(0.3, quality),
+                "scores": {"audio_size_bytes": float(size), "output_valid": 1.0},
+            }
+
+        elif capability == Capability.SPEECH_TO_TEXT:
+            # Generate test audio via TTS, then transcribe
+            test_text = "The quick brown fox jumps over the lazy dog."
+            try:
+                tts_resp = self._hf_inference_post("facebook/mms-tts-eng", {"inputs": test_text})
+                tts_resp.raise_for_status()
+                tts_audio = tts_resp.content
+            except Exception:
+                tts_audio = self._minimal_wav()
+
+            resp = self._hf_inference_post(model_id, tts_audio, is_binary_input=True)
+            resp.raise_for_status()
+            result = resp.json()
+            transcript_text = ""
+            if isinstance(result, dict):
+                transcript_text = result.get("text", "")
+            elif isinstance(result, list) and result:
+                transcript_text = result[0].get("text", "") if isinstance(result[0], dict) else str(result[0])
+            else:
+                transcript_text = str(result)
+
+            expected_words = set(test_text.lower().split())
+            got_words = set(transcript_text.lower().split())
+            overlap = len(expected_words & got_words) / len(expected_words) if expected_words else 0
+            quality = max(0.1, overlap)
+
+            return {
+                "summary": f'Transcribed: "{transcript_text[:120]}"',
+                "quality": round(quality, 4),
+                "scores": {"word_overlap": round(overlap, 4), "transcript_length": float(len(transcript_text))},
+            }
+
+        elif capability == Capability.TEXT_TO_IMAGE:
+            prompt = step.test_prompt or "A beautiful sunset over mountains, digital art"
+            resp = self._hf_inference_post(model_id, {"inputs": prompt})
+            resp.raise_for_status()
+            content_type = resp.headers.get("content-type", "")
+            size = len(resp.content)
+            is_image = "image" in content_type or size > 1000
+            quality = 0.8 if is_image and size > 5000 else 0.4
+            return {
+                "summary": f"Generated image: {size:,} bytes ({content_type})",
+                "quality": quality,
+                "scores": {"image_size_bytes": float(size), "output_valid": 1.0 if is_image else 0.0},
+            }
+
+        elif capability == Capability.IMAGE_CLASSIFICATION:
+            test_image = self._test_image()
+            resp = self._hf_inference_post(model_id, test_image, is_binary_input=True, content_type="image/png")
+            resp.raise_for_status()
+            results = resp.json()
+            top_label = ""
+            top_score = 0.0
+            if results and isinstance(results, list) and len(results) > 0:
+                top_label = results[0].get("label", "")
+                top_score = results[0].get("score", 0.0)
+            quality = min(1.0, top_score) if top_score > 0 else 0.5
+            return {
+                "summary": f'Top label: "{top_label}" (score={top_score:.3f})',
+                "quality": round(quality, 4),
+                "scores": {"top_score": round(top_score, 4), "num_labels": float(len(results) if results else 0)},
+            }
+
+        elif capability == Capability.IMAGE_TO_TEXT:
+            test_image = self._test_image()
+            resp = self._hf_inference_post(model_id, test_image, is_binary_input=True, content_type="image/png")
+            resp.raise_for_status()
+            result = resp.json()
+            text = ""
+            if isinstance(result, list) and result:
+                text = result[0].get("generated_text", "") if isinstance(result[0], dict) else str(result[0])
+            elif isinstance(result, dict):
+                text = result.get("generated_text", "")
+            else:
+                text = str(result)
+            quality = 0.7 if len(text) > 5 else 0.2
+            return {
+                "summary": f'Caption: "{text[:150]}"',
+                "quality": quality,
+                "scores": {"caption_length": float(len(text)), "output_valid": 1.0 if text else 0.0},
+            }
+
+        elif capability == Capability.OBJECT_DETECTION:
+            test_image = self._test_image()
+            resp = self._hf_inference_post(model_id, test_image, is_binary_input=True, content_type="image/png")
+            resp.raise_for_status()
+            results = resp.json()
+            num_objects = len(results) if isinstance(results, list) else 0
+            quality = 0.7 if num_objects > 0 else 0.3
+            return {
+                "summary": f"Detected {num_objects} objects",
+                "quality": quality,
+                "scores": {"num_objects": float(num_objects), "output_valid": 1.0},
+            }
+
+        elif capability == Capability.EMBEDDING:
+            test_text = step.test_prompt or "This is a test sentence for embedding."
+            resp = self._hf_inference_post(model_id, {"inputs": test_text})
+            resp.raise_for_status()
+            result = resp.json()
+            dim = 0
+            if isinstance(result, list):
+                if result and isinstance(result[0], list):
+                    dim = len(result[0])
+                else:
+                    dim = len(result)
+            quality = 0.8 if dim > 0 else 0.1
+            return {
+                "summary": f"Embedding dimension: {dim}",
+                "quality": quality,
+                "scores": {"embedding_dim": float(dim), "output_valid": 1.0 if dim > 0 else 0.0},
+            }
+
+        else:
+            # Unknown non-chat capability — attempt a basic check
+            return {
+                "summary": f"Unknown capability {capability.value} — skipping live test",
+                "quality": 0.0,
+                "scores": {},
+            }
+
+    @staticmethod
+    def _minimal_wav() -> bytes:
+        """Return a minimal valid WAV file (~1 second of silence) for STT testing."""
+        import struct
+        sample_rate = 16000
+        num_samples = sample_rate  # 1 second
+        data_size = num_samples * 2  # 16-bit mono
+        header = struct.pack(
+            "<4sI4s4sIHHIIHH4sI",
+            b"RIFF", 36 + data_size, b"WAVE",
+            b"fmt ", 16, 1, 1, sample_rate, sample_rate * 2, 2, 16,
+            b"data", data_size,
+        )
+        return header + b"\x00" * data_size
+
+    @staticmethod
+    def _test_image() -> bytes:
+        """Generate a small test PNG (32x32 gradient) for image model testing."""
+        import io
+        import struct
+        import zlib
+
+        width, height = 32, 32
+        # Build raw pixel data (RGB)
+        raw = b""
+        for y in range(height):
+            raw += b"\x00"  # filter byte
+            for x in range(width):
+                r = int(255 * x / width)
+                g = int(255 * y / height)
+                b = 128
+                raw += struct.pack("BBB", r, g, b)
+
+        def _chunk(ctype: bytes, data: bytes) -> bytes:
+            c = ctype + data
+            return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+        png = b"\x89PNG\r\n\x1a\n"
+        png += _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        png += _chunk(b"IDAT", zlib.compress(raw))
+        png += _chunk(b"IEND", b"")
+        return png
 
     # ── Scoring ───────────────────────────────────────────────────────
 

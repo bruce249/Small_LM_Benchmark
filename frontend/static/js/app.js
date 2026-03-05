@@ -370,10 +370,13 @@ function renderWfBenchmarks(wf) {
         const statusHtml = r.error
           ? `<span class="text-red-400 text-xs">${esc(r.error).slice(0, 40)}</span>`
           : '<span class="text-green-400">✓</span>';
+        const sampleHtml = r.output_sample && !r.error
+          ? `<div class="text-xs text-gray-500 mt-1 truncate max-w-xs" title="${esc(r.output_sample)}">${esc(r.output_sample).slice(0, 80)}</div>`
+          : '';
 
         html += `<tr>
           <td class="medal">${MEDAL[r.rank] || ''}</td>
-          <td class="font-medium text-gray-200">${modelShort(r.model_id)}</td>
+          <td class="font-medium text-gray-200">${modelShort(r.model_id)}${sampleHtml}</td>
           <td>
             <div class="flex items-center gap-2">
               <span>${r.avg_quality_score.toFixed(4)}</span>
