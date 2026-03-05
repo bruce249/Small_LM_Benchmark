@@ -4,6 +4,14 @@
 
 const API = window.location.origin;
 
+// ── Auth state ───────────────────────────────────────────────────────────
+let _hfToken = localStorage.getItem('hf_token') || '';
+let _hfUsername = localStorage.getItem('hf_username') || '';
+
+function getAuthHeaders() {
+  return _hfToken ? { 'Authorization': `Bearer ${_hfToken}` } : {};
+}
+
 // ── Capability colours ───────────────────────────────────────────────────
 const CAP_COLOURS = {
   text_generation:      { bg: 'rgba(59,130,246,0.12)', fg: '#60a5fa', border: 'rgba(59,130,246,0.25)' },
@@ -70,6 +78,20 @@ window.addEventListener('hashchange', () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ── Token gate check ─────────────────────────────────────────────
+  if (_hfToken) {
+    // Token exists in localStorage – let user in, show username
+    hideTokenGate();
+    updateNavUser();
+  } else {
+    showTokenGate();
+  }
+
+  // Allow pressing Enter in token inputs
+  document.getElementById('gate-token-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') validateAndEnter();
+  });
+
   // Route based on hash
   const page = location.hash.replace('#', '') || 'home';
   navigateTo(page);
@@ -141,7 +163,7 @@ function showToast(msg, type = 'info') {
 async function apiPost(path, body) {
   const resp = await fetch(API + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
@@ -605,6 +627,177 @@ function switchBmTab(tab) {
   document.querySelectorAll('.bm-tab-content').forEach(c => c.classList.add('hidden'));
   const el = document.getElementById('bm-tab-' + tab);
   if (el) { el.classList.remove('hidden'); el.style.animation = 'fadeIn 0.3s ease-out'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  AUTH – Token Gate & Management
+// ═══════════════════════════════════════════════════════════════════════
+
+function showTokenGate() {
+  document.getElementById('token-gate').classList.remove('hidden');
+  document.getElementById('token-gate').style.display = 'flex';
+}
+
+function hideTokenGate() {
+  const gate = document.getElementById('token-gate');
+  gate.style.opacity = '0';
+  gate.style.transition = 'opacity 0.4s ease-out';
+  setTimeout(() => { gate.classList.add('hidden'); gate.style.display = 'none'; gate.style.opacity = '1'; }, 400);
+}
+
+function updateNavUser() {
+  const el = document.getElementById('nav-username');
+  if (_hfUsername) {
+    el.textContent = _hfUsername;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+async function validateAndEnter() {
+  const input = document.getElementById('gate-token-input');
+  const token = input.value.trim();
+  const errorDiv = document.getElementById('gate-error');
+  const errorMsg = document.getElementById('gate-error-msg');
+  const submitBtn = document.getElementById('gate-submit');
+  const loadingDiv = document.getElementById('gate-loading');
+
+  errorDiv.classList.add('hidden');
+
+  if (!token) {
+    errorMsg.textContent = 'Please enter a token';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  if (!token.startsWith('hf_')) {
+    errorMsg.textContent = 'Token should start with "hf_"';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  // Show loading
+  submitBtn.classList.add('hidden');
+  loadingDiv.classList.remove('hidden');
+
+  try {
+    const resp = await fetch(API + '/auth/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const data = await resp.json();
+
+    if (resp.ok && data.valid) {
+      // Success – store token and enter
+      _hfToken = token;
+      _hfUsername = data.username || 'user';
+      localStorage.setItem('hf_token', token);
+      localStorage.setItem('hf_username', _hfUsername);
+      updateNavUser();
+      hideTokenGate();
+      showToast(`Welcome, ${_hfUsername}!`, 'success');
+    } else {
+      errorMsg.textContent = data.detail || 'Invalid token';
+      errorDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorMsg.textContent = 'Connection error: ' + err.message;
+    errorDiv.classList.remove('hidden');
+  } finally {
+    submitBtn.classList.remove('hidden');
+    loadingDiv.classList.add('hidden');
+  }
+}
+
+function toggleTokenVisibility(inputId, iconId) {
+  const inp = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18"/>';
+  } else {
+    inp.type = 'password';
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  }
+}
+
+function showChangeTokenModal() {
+  document.getElementById('modal-token-input').value = '';
+  document.getElementById('modal-error').classList.add('hidden');
+  document.getElementById('modal-loading').classList.add('hidden');
+  document.getElementById('modal-submit').classList.remove('hidden');
+  document.getElementById('change-token-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-token-input').focus(), 100);
+}
+
+function hideChangeTokenModal() {
+  document.getElementById('change-token-modal').classList.add('hidden');
+}
+
+async function changeToken() {
+  const input = document.getElementById('modal-token-input');
+  const token = input.value.trim();
+  const errorDiv = document.getElementById('modal-error');
+  const errorMsg = document.getElementById('modal-error-msg');
+  const submitBtn = document.getElementById('modal-submit');
+  const loadingDiv = document.getElementById('modal-loading');
+
+  errorDiv.classList.add('hidden');
+
+  if (!token) {
+    errorMsg.textContent = 'Please enter a token';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  if (!token.startsWith('hf_')) {
+    errorMsg.textContent = 'Token should start with "hf_"';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  submitBtn.classList.add('hidden');
+  loadingDiv.classList.remove('hidden');
+
+  try {
+    const resp = await fetch(API + '/auth/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const data = await resp.json();
+
+    if (resp.ok && data.valid) {
+      _hfToken = token;
+      _hfUsername = data.username || 'user';
+      localStorage.setItem('hf_token', token);
+      localStorage.setItem('hf_username', _hfUsername);
+      updateNavUser();
+      hideChangeTokenModal();
+      showToast(`Token updated! Welcome, ${_hfUsername}`, 'success');
+    } else {
+      errorMsg.textContent = data.detail || 'Invalid token';
+      errorDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorMsg.textContent = 'Connection error: ' + err.message;
+    errorDiv.classList.remove('hidden');
+  } finally {
+    submitBtn.classList.remove('hidden');
+    loadingDiv.classList.add('hidden');
+  }
+}
+
+function logout() {
+  _hfToken = '';
+  _hfUsername = '';
+  localStorage.removeItem('hf_token');
+  localStorage.removeItem('hf_username');
+  updateNavUser();
+  showTokenGate();
+  showToast('Logged out', 'info');
 }
 
 // ═══════════════════════════════════════════════════════════════════════

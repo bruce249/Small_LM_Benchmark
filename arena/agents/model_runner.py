@@ -30,9 +30,9 @@ class ModelRunnerAgent:
     * Execute multiple models in parallel via :mod:`asyncio`.
     """
 
-    def __init__(self, max_concurrent: int | None = None) -> None:
+    def __init__(self, max_concurrent: int | None = None, hf_token: str | None = None) -> None:
         settings = get_settings()
-        self._token = settings.hf_api_token
+        self._token = hf_token or settings.hf_api_token
         self._timeout = settings.default_timeout_seconds
         self._semaphore = asyncio.Semaphore(
             max_concurrent or settings.max_concurrent_models

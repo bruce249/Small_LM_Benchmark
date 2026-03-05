@@ -45,11 +45,12 @@ class ExperimentManager:
         model_runner: ModelRunnerAgent | None = None,
         evaluator: EvaluatorAgent | None = None,
         reporter: ReportAgent | None = None,
+        hf_token: str | None = None,
     ) -> None:
         self._loader = dataset_loader or DatasetLoader()
         self._registry = model_registry or ModelRegistry()
         self._task_gen = task_generator or TaskGeneratorAgent(self._loader)
-        self._runner = model_runner or ModelRunnerAgent()
+        self._runner = model_runner or ModelRunnerAgent(hf_token=hf_token)
         self._evaluator = evaluator or EvaluatorAgent(self._registry)
         self._reporter = reporter or ReportAgent()
 

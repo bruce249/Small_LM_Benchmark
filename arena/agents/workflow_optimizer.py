@@ -93,13 +93,14 @@ class WorkflowOptimizerAgent:
         latency_weight: float = 0.25,
         cost_weight: float = 0.15,
         max_concurrent: int = 3,
+        hf_token: str | None = None,
     ) -> None:
         self._quality_w = quality_weight
         self._latency_w = latency_weight
         self._cost_w = cost_weight
 
         settings = get_settings()
-        self._token = settings.hf_api_token
+        self._token = hf_token or settings.hf_api_token
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._discovery = ModelDiscoveryService()
 

@@ -77,10 +77,11 @@ class TaskDecomposerAgent:
     def __init__(
         self,
         decomposer_model: str = "Qwen/Qwen2.5-7B-Instruct",
+        hf_token: str | None = None,
     ) -> None:
         self._model = decomposer_model
         settings = get_settings()
-        self._token = settings.hf_api_token
+        self._token = hf_token or settings.hf_api_token
 
     async def decompose(self, user_request: str) -> tuple[str, list[PipelineStep]]:
         """Break a user request into pipeline steps.

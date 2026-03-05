@@ -7,9 +7,10 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+import httpx
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +31,7 @@ from arena.api.schemas import (
 from arena.agents.report_agent import ReportAgent
 from arena.agents.task_decomposer import TaskDecomposerAgent
 from arena.agents.workflow_optimizer import WorkflowOptimizerAgent
+from arena.config import get_settings
 from arena.db.session import get_db
 from arena.experiments.experiment_manager import ExperimentManager
 from arena.logging_config import get_logger, setup_logging
@@ -77,6 +79,64 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Token extraction helper ───────────────────────────────────────────────────
+
+
+def _extract_token(authorization: str | None = Header(None)) -> str | None:
+    """Extract the HF token from the Authorization header.
+
+    Accepts ``Bearer <token>`` or a bare token string.
+    Falls back to the environment variable when no header is sent.
+    """
+    if authorization:
+        if authorization.startswith("Bearer "):
+            return authorization[7:]
+        return authorization
+    # Fallback: env var
+    settings = get_settings()
+    return settings.hf_api_token or None
+
+
+# ── Token validation endpoint ─────────────────────────────────────────────────
+
+
+@app.post("/auth/validate")
+async def validate_token(request: Request):
+    """Validate a HuggingFace API token by calling the HF whoami endpoint."""
+    body = await request.json()
+    token = body.get("token", "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Token is required")
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://huggingface.co/api/whoami",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if resp.status_code == 200:
+            data = resp.json()
+            return {
+                "valid": True,
+                "username": data.get("name", data.get("fullname", "user")),
+                "email": data.get("email", ""),
+            }
+        elif resp.status_code == 401:
+            return JSONResponse(
+                status_code=401,
+                content={"valid": False, "detail": "Invalid or expired token"},
+            )
+        else:
+            return JSONResponse(
+                status_code=resp.status_code,
+                content={"valid": False, "detail": f"HuggingFace API returned {resp.status_code}"},
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="HuggingFace API timeout")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Validation error: {exc}")
+
 
 # ── Static files ──────────────────────────────────────────────────────────────
 
@@ -135,6 +195,7 @@ async def list_models(task_type: str | None = None):
 async def create_experiment(
     body: ExperimentRequest,
     background_tasks: BackgroundTasks,
+    token: str | None = Depends(_extract_token),
 ):
     """Launch an evaluation experiment (async via background task)."""
     task_type = _resolve_task_type(body.task_type)
@@ -142,7 +203,8 @@ async def create_experiment(
 
     async def _run() -> None:
         try:
-            report = await _manager.run(
+            mgr = ExperimentManager(model_registry=_registry, hf_token=token)
+            report = await mgr.run(
                 task_type=task_type,
                 model_ids=body.model_ids or None,
                 dataset_name=body.dataset_name,
@@ -165,11 +227,15 @@ async def create_experiment(
 
 
 @app.post("/experiments/sync", response_model=ExperimentReportSchema)
-async def create_experiment_sync(body: ExperimentRequest):
+async def create_experiment_sync(
+    body: ExperimentRequest,
+    token: str | None = Depends(_extract_token),
+):
     """Run an experiment synchronously and return the full report."""
     task_type = _resolve_task_type(body.task_type)
+    mgr = ExperimentManager(model_registry=_registry, hf_token=token)
 
-    report = await _manager.run(
+    report = await mgr.run(
         task_type=task_type,
         model_ids=body.model_ids or None,
         dataset_name=body.dataset_name,
@@ -241,7 +307,10 @@ def _report_to_schema(report: ExperimentReport) -> ExperimentReportSchema:
 
 
 @app.post("/workflow", response_model=WorkflowResponse)
-async def create_workflow(body: WorkflowRequest):
+async def create_workflow(
+    body: WorkflowRequest,
+    token: str | None = Depends(_extract_token),
+):
     """Decompose a user request into steps, benchmark candidates, and recommend a pipeline.
 
     This is the main "intelligent workflow builder" endpoint. It:
@@ -249,11 +318,12 @@ async def create_workflow(body: WorkflowRequest):
     2. For each step, discovers candidate models and benchmarks them.
     3. Returns a complete pipeline recommendation with the best model per step.
     """
-    decomposer = TaskDecomposerAgent(decomposer_model=body.decomposer_model)
+    decomposer = TaskDecomposerAgent(decomposer_model=body.decomposer_model, hf_token=token)
     optimizer = WorkflowOptimizerAgent(
         quality_weight=body.quality_weight,
         latency_weight=body.latency_weight,
         cost_weight=body.cost_weight,
+        hf_token=token,
     )
 
     try:
@@ -278,17 +348,19 @@ async def create_workflow(body: WorkflowRequest):
 async def create_workflow_async(
     body: WorkflowRequest,
     background_tasks: BackgroundTasks,
+    token: str | None = Depends(_extract_token),
 ):
     """Launch a workflow build asynchronously."""
     wf_id = str(uuid.uuid4())
 
     async def _run() -> None:
         try:
-            decomposer = TaskDecomposerAgent(decomposer_model=body.decomposer_model)
+            decomposer = TaskDecomposerAgent(decomposer_model=body.decomposer_model, hf_token=token)
             optimizer = WorkflowOptimizerAgent(
                 quality_weight=body.quality_weight,
                 latency_weight=body.latency_weight,
                 cost_weight=body.cost_weight,
+                hf_token=token,
             )
             analysis, steps = await decomposer.decompose(body.user_request)
             recommendation = await optimizer.optimize(
