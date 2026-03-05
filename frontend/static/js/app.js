@@ -66,6 +66,14 @@ function navigateTo(page) {
   if (el) { el.classList.remove('hidden'); el.style.animation = 'fadeIn 0.3s ease-out'; }
   document.querySelectorAll('.nav-link').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   window.location.hash = page;
+  // Lazy-load hub models on first visit
+  if (page === 'models' && document.getElementById('hub-grid').children.length === 0) {
+    searchHubModels();
+  }
+  // Refresh benchmark checkboxes when switching to benchmark page
+  if (page === 'benchmark') {
+    syncBenchmarkCheckboxes();
+  }
 }
 
 window.addEventListener('hashchange', () => {
@@ -122,14 +130,13 @@ document.addEventListener('DOMContentLoaded', () => {
     legend.appendChild(row);
   }
 
-  // Populate benchmark model checkboxes
-  const checks = document.getElementById('bm-model-checks');
-  BENCHMARK_MODELS.forEach((m, i) => {
-    const lbl = document.createElement('label');
-    lbl.className = 'model-check';
-    lbl.innerHTML = `<input type="checkbox" value="${m}" ${i < 3 ? 'checked' : ''} /> ${m.split('/')[1]}`;
-    checks.appendChild(lbl);
-  });
+  // Populate benchmark model checkboxes (merge hardcoded + localStorage)
+  syncBenchmarkCheckboxes();
+
+  // Initialize Model Hub search listener
+  initHubSearch();
+  renderMyModelsList();
+  updateMyModelCount();
 
   // Enable build button when text present
   document.getElementById('wf-input').addEventListener('input', updateBuildBtn);
@@ -627,6 +634,283 @@ function switchBmTab(tab) {
   document.querySelectorAll('.bm-tab-content').forEach(c => c.classList.add('hidden'));
   const el = document.getElementById('bm-tab-' + tab);
   if (el) { el.classList.remove('hidden'); el.style.animation = 'fadeIn 0.3s ease-out'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  MODEL HUB – HuggingFace Model Browser
+// ═══════════════════════════════════════════════════════════════════════
+
+let hubPage = 0;
+const HUB_PER_PAGE = 30;
+let hubFilter = '';
+let hubSearchQuery = '';
+let hubSearchTimer = null;
+let hubTotalLoaded = 0;
+
+// Persisted "My Models" list
+function getMyModels() {
+  try { return JSON.parse(localStorage.getItem('my_benchmark_models') || '[]'); } catch { return []; }
+}
+function setMyModels(arr) {
+  localStorage.setItem('my_benchmark_models', JSON.stringify(arr));
+  renderMyModelsList();
+  updateMyModelCount();
+  syncBenchmarkCheckboxes();
+}
+
+function updateMyModelCount() {
+  const c = getMyModels().length;
+  const el = document.getElementById('hub-my-count');
+  if (el) el.textContent = `${c} selected`;
+}
+
+function isModelSelected(modelId) {
+  return getMyModels().includes(modelId);
+}
+
+function addModelToList(modelId) {
+  const list = getMyModels();
+  if (!list.includes(modelId)) {
+    list.push(modelId);
+    setMyModels(list);
+    showToast(`Added ${modelId.split('/').pop()}`, 'success');
+  }
+}
+
+function removeModelFromList(modelId) {
+  const list = getMyModels().filter(m => m !== modelId);
+  setMyModels(list);
+  showToast(`Removed ${modelId.split('/').pop()}`, 'info');
+}
+
+function toggleHubModel(modelId) {
+  if (isModelSelected(modelId)) {
+    removeModelFromList(modelId);
+  } else {
+    addModelToList(modelId);
+  }
+  // Update button state in grid
+  document.querySelectorAll(`.hub-add-btn[data-model="${CSS.escape(modelId)}"]`).forEach(btn => {
+    const added = isModelSelected(modelId);
+    btn.classList.toggle('added', added);
+    btn.innerHTML = added
+      ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Added'
+      : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add';
+  });
+}
+
+function clearMyModels() {
+  if (getMyModels().length === 0) return;
+  setMyModels([]);
+  showToast('Cleared all models from list', 'info');
+  // Re-render grid buttons
+  document.querySelectorAll('.hub-add-btn.added').forEach(btn => {
+    btn.classList.remove('added');
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add';
+  });
+}
+
+function renderMyModelsList() {
+  const container = document.getElementById('hub-my-models');
+  if (!container) return;
+  const list = getMyModels();
+  if (list.length === 0) {
+    container.innerHTML = '<p class="text-gray-600 text-xs text-center py-4">No models added yet</p>';
+    return;
+  }
+  let html = '';
+  list.forEach(m => {
+    html += `
+      <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white/3 border border-white/5 group hover:border-brand-500/30 transition">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-brand-400 text-xs shrink-0">⬡</span>
+          <span class="text-gray-300 text-xs truncate" title="${esc(m)}">${esc(m)}</span>
+        </div>
+        <button onclick="removeModelFromList('${m.replace(/'/g, "\\'")}')" class="text-gray-600 hover:text-red-400 transition shrink-0 opacity-0 group-hover:opacity-100">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function setHubFilter(btn) {
+  document.querySelectorAll('.hub-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  hubFilter = btn.dataset.filter;
+  hubPage = 0;
+  searchHubModels();
+}
+
+async function searchHubModels() {
+  const searchInput = document.getElementById('hub-search');
+  hubSearchQuery = searchInput ? searchInput.value.trim() : '';
+  const sort = document.getElementById('hub-sort')?.value || 'trending';
+
+  // Show loading
+  show('hub-loading');
+  hide('hub-grid');
+  hide('hub-empty');
+
+  const params = new URLSearchParams({
+    search: hubSearchQuery,
+    filter: hubFilter,
+    sort: sort,
+    direction: '-1',
+    limit: HUB_PER_PAGE,
+    offset: hubPage * HUB_PER_PAGE,
+  });
+
+  try {
+    const resp = await fetch(API + '/api/hub/models?' + params.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const models = await resp.json();
+    hubTotalLoaded = models.length;
+    renderHubGrid(models);
+  } catch (err) {
+    hide('hub-loading');
+    show('hub-empty');
+    console.error('Hub search error:', err);
+  }
+
+  updateHubPagination();
+}
+
+function renderHubGrid(models) {
+  const grid = document.getElementById('hub-grid');
+  hide('hub-loading');
+
+  if (!models || models.length === 0) {
+    hide('hub-grid');
+    show('hub-empty');
+    document.getElementById('hub-results-info').textContent = 'No models found';
+    return;
+  }
+
+  show('hub-grid');
+  hide('hub-empty');
+  document.getElementById('hub-results-info').textContent =
+    `Showing ${models.length} model${models.length !== 1 ? 's' : ''}${hubSearchQuery ? ` for "${hubSearchQuery}"` : ''}`;
+
+  let html = '';
+  models.forEach(m => {
+    const modelId = m.modelId || m.id || '';
+    const author = modelId.includes('/') ? modelId.split('/')[0] : '';
+    const name = modelId.includes('/') ? modelId.split('/')[1] : modelId;
+    const pipeline = m.pipeline_tag || '';
+    const downloads = m.downloads || 0;
+    const likes = m.likes || 0;
+    const lastMod = m.lastModified ? timeAgo(m.lastModified) : '';
+    const tags = (m.tags || []).slice(0, 4);
+    const added = isModelSelected(modelId);
+
+    html += `
+      <div class="hub-model-card">
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div class="min-w-0">
+            <div class="text-xs text-gray-500 mb-0.5">${esc(author)}</div>
+            <h3 class="text-sm font-semibold text-gray-100 truncate" title="${esc(modelId)}">${esc(name)}</h3>
+          </div>
+          <button class="hub-add-btn ${added ? 'added' : ''}" data-model="${esc(modelId)}" onclick="toggleHubModel('${modelId.replace(/'/g, "\\'")}')">
+            ${added
+              ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Added'
+              : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add'}
+          </button>
+        </div>
+        ${pipeline ? `<span class="hub-tag pipeline">${esc(pipeline)}</span>` : ''}
+        ${tags.map(t => `<span class="hub-tag">${esc(t)}</span>`).join('')}
+        <div class="flex items-center gap-4 mt-auto pt-3 text-xs text-gray-500">
+          <span class="flex items-center gap-1" title="Downloads">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            ${formatNumber(downloads)}
+          </span>
+          <span class="flex items-center gap-1" title="Likes">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            ${formatNumber(likes)}
+          </span>
+          ${lastMod ? `<span class="ml-auto" title="Last updated">${lastMod}</span>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  grid.innerHTML = html;
+}
+
+function updateHubPagination() {
+  const prevBtn = document.getElementById('hub-prev-btn');
+  const nextBtn = document.getElementById('hub-next-btn');
+  const info = document.getElementById('hub-page-info');
+
+  if (prevBtn) prevBtn.disabled = hubPage === 0;
+  if (nextBtn) nextBtn.disabled = hubTotalLoaded < HUB_PER_PAGE;
+  if (info) info.textContent = `Page ${hubPage + 1}`;
+}
+
+function hubNextPage() {
+  if (hubTotalLoaded >= HUB_PER_PAGE) {
+    hubPage++;
+    searchHubModels();
+  }
+}
+
+function hubPrevPage() {
+  if (hubPage > 0) {
+    hubPage--;
+    searchHubModels();
+  }
+}
+
+function initHubSearch() {
+  const searchInput = document.getElementById('hub-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(hubSearchTimer);
+      hubSearchTimer = setTimeout(() => {
+        hubPage = 0;
+        searchHubModels();
+      }, 400);
+    });
+  }
+}
+
+// Sync benchmark checkboxes with my models list
+function syncBenchmarkCheckboxes() {
+  const checks = document.getElementById('bm-model-checks');
+  if (!checks) return;
+  const myModels = getMyModels();
+  const allModels = [...new Set([...BENCHMARK_MODELS, ...myModels])];
+
+  checks.innerHTML = '';
+  allModels.forEach(m => {
+    const lbl = document.createElement('label');
+    lbl.className = 'model-check';
+    lbl.innerHTML = `<input type="checkbox" value="${m}" checked /> ${m.split('/')[1] || m}`;
+    checks.appendChild(lbl);
+  });
+}
+
+// ── Format helpers for hub ─────────────────────────────────────────
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════

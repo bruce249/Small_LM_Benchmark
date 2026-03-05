@@ -119,6 +119,7 @@
         <!-- Links -->
         <div class="flex items-center gap-1">
           <button onclick="navigateTo('home')"      class="nav-link" data-page="home">Home</button>
+          <button onclick="navigateTo('models')"     class="nav-link" data-page="models">Models</button>
           <button onclick="navigateTo('workflow')"   class="nav-link" data-page="workflow">Workflow Builder</button>
           <button onclick="navigateTo('benchmark')"  class="nav-link" data-page="benchmark">Benchmark</button>
 
@@ -328,6 +329,161 @@
           <div class="card">
             <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Capabilities</h3>
             <div class="space-y-2 text-xs" id="capability-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ MODELS HUB PAGE ═══════════════════════ -->
+  <section id="page-models" class="page hidden">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h2 class="text-3xl font-bold mb-2">
+            <span class="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">Model Hub</span>
+          </h2>
+          <p class="text-gray-400">Browse 2M+ HuggingFace models. Add any model to your benchmark list.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-400" id="hub-my-count">0 selected</span>
+          <button onclick="navigateTo('benchmark')" class="btn-primary py-2 px-4 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            Go to Benchmark
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- ─── Left: Filters sidebar ─── -->
+        <div class="space-y-5">
+          <!-- Search -->
+          <div class="card">
+            <label class="block text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Search Models</label>
+            <div class="relative">
+              <input id="hub-search" type="text" class="w-full bg-surface-800 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 transition text-sm" placeholder="Search models…" />
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+          </div>
+
+          <!-- Task filter -->
+          <div class="card">
+            <label class="block text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Pipeline Tag</label>
+            <div class="space-y-1.5" id="hub-task-filters">
+              <button class="hub-filter-btn active" data-filter="" onclick="setHubFilter(this)">All Models</button>
+              <button class="hub-filter-btn" data-filter="text-generation" onclick="setHubFilter(this)">
+                <span class="text-blue-400">✏️</span> Text Generation
+              </button>
+              <button class="hub-filter-btn" data-filter="text2text-generation" onclick="setHubFilter(this)">
+                <span class="text-purple-400">🔄</span> Text2Text
+              </button>
+              <button class="hub-filter-btn" data-filter="summarization" onclick="setHubFilter(this)">
+                <span class="text-purple-400">📝</span> Summarization
+              </button>
+              <button class="hub-filter-btn" data-filter="question-answering" onclick="setHubFilter(this)">
+                <span class="text-cyan-400">❓</span> Question Answering
+              </button>
+              <button class="hub-filter-btn" data-filter="conversational" onclick="setHubFilter(this)">
+                <span class="text-green-400">💬</span> Conversational
+              </button>
+              <button class="hub-filter-btn" data-filter="translation" onclick="setHubFilter(this)">
+                <span class="text-indigo-400">🌐</span> Translation
+              </button>
+              <button class="hub-filter-btn" data-filter="fill-mask" onclick="setHubFilter(this)">
+                <span class="text-yellow-400">🎭</span> Fill-Mask
+              </button>
+              <button class="hub-filter-btn" data-filter="text-classification" onclick="setHubFilter(this)">
+                <span class="text-pink-400">🏷️</span> Text Classification
+              </button>
+              <button class="hub-filter-btn" data-filter="token-classification" onclick="setHubFilter(this)">
+                <span class="text-orange-400">🔤</span> Token Classification
+              </button>
+              <button class="hub-filter-btn" data-filter="automatic-speech-recognition" onclick="setHubFilter(this)">
+                <span class="text-orange-400">🎙️</span> Speech Recognition
+              </button>
+              <button class="hub-filter-btn" data-filter="text-to-speech" onclick="setHubFilter(this)">
+                <span class="text-fuchsia-400">🔊</span> Text-to-Speech
+              </button>
+              <button class="hub-filter-btn" data-filter="image-classification" onclick="setHubFilter(this)">
+                <span class="text-green-400">🏷️</span> Image Classification
+              </button>
+              <button class="hub-filter-btn" data-filter="image-to-text" onclick="setHubFilter(this)">
+                <span class="text-teal-400">📸</span> Image-to-Text
+              </button>
+              <button class="hub-filter-btn" data-filter="text-to-image" onclick="setHubFilter(this)">
+                <span class="text-red-400">🎨</span> Text-to-Image
+              </button>
+              <button class="hub-filter-btn" data-filter="object-detection" onclick="setHubFilter(this)">
+                <span class="text-amber-400">🔍</span> Object Detection
+              </button>
+              <button class="hub-filter-btn" data-filter="feature-extraction" onclick="setHubFilter(this)">
+                <span class="text-gray-400">📐</span> Feature Extraction
+              </button>
+              <button class="hub-filter-btn" data-filter="sentence-similarity" onclick="setHubFilter(this)">
+                <span class="text-violet-400">🔗</span> Sentence Similarity
+              </button>
+              <button class="hub-filter-btn" data-filter="zero-shot-classification" onclick="setHubFilter(this)">
+                <span class="text-sky-400">🎯</span> Zero-Shot Classification
+              </button>
+            </div>
+          </div>
+
+          <!-- Sort -->
+          <div class="card">
+            <label class="block text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Sort By</label>
+            <select id="hub-sort" class="input-field" onchange="searchHubModels()">
+              <option value="trending">🔥 Trending</option>
+              <option value="downloads">⬇️ Most Downloads</option>
+              <option value="likes">❤️ Most Likes</option>
+              <option value="lastModified">🕐 Recently Updated</option>
+              <option value="createdAt">🆕 Newest</option>
+            </select>
+          </div>
+
+          <!-- My Models List -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <label class="block text-xs text-gray-400 uppercase tracking-wider font-semibold">My Benchmark List</label>
+              <button onclick="clearMyModels()" class="text-xs text-red-400 hover:text-red-300 transition" title="Clear all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+            <div id="hub-my-models" class="space-y-1.5 max-h-64 overflow-y-auto">
+              <p class="text-gray-600 text-xs text-center py-4">No models added yet</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Right: Model grid ─── -->
+        <div class="lg:col-span-3">
+          <!-- Results info bar -->
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm text-gray-400" id="hub-results-info">Loading models…</span>
+            <div class="flex items-center gap-2">
+              <button onclick="hubPrevPage()" id="hub-prev-btn" class="btn-secondary py-1.5 px-3 text-xs" disabled>← Prev</button>
+              <span class="text-xs text-gray-500" id="hub-page-info">Page 1</span>
+              <button onclick="hubNextPage()" id="hub-next-btn" class="btn-secondary py-1.5 px-3 text-xs">Next →</button>
+            </div>
+          </div>
+
+          <!-- Loading skeleton -->
+          <div id="hub-loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div class="hub-card-skeleton"></div>
+            <div class="hub-card-skeleton"></div>
+            <div class="hub-card-skeleton"></div>
+            <div class="hub-card-skeleton"></div>
+            <div class="hub-card-skeleton"></div>
+            <div class="hub-card-skeleton"></div>
+          </div>
+
+          <!-- Model cards grid -->
+          <div id="hub-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 hidden"></div>
+
+          <!-- Empty state -->
+          <div id="hub-empty" class="hidden card text-center py-16">
+            <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="text-gray-500">No models found matching your search.</p>
           </div>
         </div>
       </div>

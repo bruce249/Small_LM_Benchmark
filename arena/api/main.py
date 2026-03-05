@@ -200,6 +200,90 @@ async def validate_token(request: Request):
         raise HTTPException(status_code=500, detail=f"Validation error: {exc}")
 
 
+# ── HuggingFace Hub Proxy ─────────────────────────────────────────────────────
+
+
+@app.get("/api/hub/models")
+async def search_hub_models(
+    search: str = "",
+    filter: str = "",
+    sort: str = "trending",
+    direction: str = "-1",
+    limit: int = 30,
+    offset: int = 0,
+    token: str | None = Depends(_extract_token),
+):
+    """Proxy search requests to HuggingFace Hub models API.
+
+    Supports the same query parameters as https://huggingface.co/api/models.
+    """
+    # Map friendly sort names to HF API sort fields
+    sort_map = {
+        "trending": "trendingScore",
+        "trendingScore": "trendingScore",
+        "downloads": "downloads",
+        "likes": "likes",
+        "lastModified": "lastModified",
+        "created": "createdAt",
+        "createdAt": "createdAt",
+    }
+    hf_sort = sort_map.get(sort, "trendingScore")
+
+    params: dict[str, str | int] = {"limit": min(limit, 100)}
+    if search:
+        params["search"] = search
+    if filter:
+        params["filter"] = filter
+    if hf_sort:
+        params["sort"] = hf_sort
+    if direction:
+        params["direction"] = direction
+    if offset:
+        params["offset"] = offset
+
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                "https://huggingface.co/api/models",
+                params=params,
+                headers=headers,
+            )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="HuggingFace API timeout")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/hub/models/{owner}/{model_name}")
+async def get_hub_model_detail(
+    owner: str,
+    model_name: str,
+    token: str | None = Depends(_extract_token),
+):
+    """Fetch details for a specific model from HuggingFace Hub."""
+    model_id = f"{owner}/{model_name}"
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"https://huggingface.co/api/models/{model_id}",
+                headers=headers,
+            )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="HuggingFace API timeout")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 # ── Static files ──────────────────────────────────────────────────────────────
 
 if _FRONTEND_DIR.exists():

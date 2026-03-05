@@ -365,6 +365,118 @@ select.input-field { cursor: pointer; }
   min-width: fit-content;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   MODEL HUB
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Model cards ─────────────────────────────────────────────────────── */
+.hub-model-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 1rem;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.hub-model-card:hover {
+  border-color: rgba(51,128,255,0.3);
+  box-shadow: 0 0 20px rgba(51,128,255,0.06);
+  transform: translateY(-2px);
+}
+
+/* ── Tags ────────────────────────────────────────────────────────────── */
+.hub-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #94a3b8;
+  margin: 0 0.25rem 0.35rem 0;
+  white-space: nowrap;
+}
+.hub-tag.pipeline {
+  background: rgba(59,130,246,0.10);
+  border-color: rgba(59,130,246,0.2);
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* ── Add / Added button ──────────────────────────────────────────────── */
+.hub-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hub-add-btn:hover {
+  border-color: rgba(51,128,255,0.5);
+  color: #60a5fa;
+  background: rgba(59,130,246,0.08);
+}
+.hub-add-btn.added {
+  border-color: rgba(74,222,128,0.3);
+  color: #4ade80;
+  background: rgba(74,222,128,0.08);
+}
+.hub-add-btn.added:hover {
+  border-color: rgba(248,113,113,0.4);
+  color: #f87171;
+  background: rgba(248,113,113,0.08);
+}
+
+/* ── Filter sidebar buttons ──────────────────────────────────────────── */
+.hub-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hub-filter-btn:hover {
+  background: rgba(255,255,255,0.04);
+  color: #e2e8f0;
+}
+.hub-filter-btn.active {
+  background: rgba(51,128,255,0.08);
+  border-color: rgba(51,128,255,0.2);
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────────── */
+.hub-card-skeleton {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 1rem;
+  height: 170px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.7; }
+}
+
 /* ── Utility ───────────────────────────────────────────────────────── */
 .text-gradient {
   background: linear-gradient(135deg, #3380ff, #7c3aed);
