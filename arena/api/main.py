@@ -125,7 +125,10 @@ async def validate_token(request: Request):
         elif resp.status_code == 401:
             return JSONResponse(
                 status_code=401,
-                content={"valid": False, "detail": "Invalid or expired token"},
+                content={
+                    "valid": False,
+                    "detail": "Invalid or expired token. If your token was ever pushed to a public repo, HuggingFace auto-revokes it. Generate a new one at huggingface.co/settings/tokens",
+                },
             )
         else:
             return JSONResponse(
