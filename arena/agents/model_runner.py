@@ -10,7 +10,7 @@ import asyncio
 import time
 from typing import Any
 
-from huggingface_hub import InferenceClient  # type: ignore[import-untyped]
+from huggingface_hub import InferenceClient 
 
 from arena.config import get_settings
 from arena.logging_config import get_logger
@@ -23,11 +23,10 @@ class ModelRunnerAgent:
     """Sends evaluation prompts to HuggingFace Inference API endpoints.
 
     Responsibilities
-    ----------------
-    * Call the HF Inference API (chat completions) for each ``(model, task)`` pair.
-    * Measure wall-clock latency per request.
-    * Capture token usage when the API returns it.
-    * Execute multiple models in parallel via :mod:`asyncio`.
+    - Call the HF Inference API (chat completions) for each ``(model, task)`` pair.
+    - Measure wall-clock latency per request.
+    - Capture token usage when the API returns it.
+    - Execute multiple models in parallel via :mod:`asyncio`.
     """
 
     def __init__(self, max_concurrent: int | None = None, hf_token: str | None = None) -> None:
