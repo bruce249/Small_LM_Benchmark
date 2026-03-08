@@ -29,7 +29,7 @@ def _get_rouge():
 def _compute_bleu(reference: str, hypothesis: str) -> float:
     """Compute sentence-level BLEU using nltk."""
     try:
-        from nltk.translate.bleu_score import (  # type: ignore[import-untyped]
+        from nltk.translate.bleu_score import ( 
             SmoothingFunction,
             sentence_bleu,
         )

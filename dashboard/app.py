@@ -36,7 +36,7 @@ st.title("🏟️ Open Source Model Evaluation Arena")
 
 mode = st.radio(
     "Choose mode:",
-    ["🏆 Model Benchmark", "🧠 Intelligent Workflow Builder"],
+    ["🏆 Model Benchmark", "🧠 Workflow Builder"],
     horizontal=True,
 )
 
@@ -174,10 +174,10 @@ if mode == "🏆 Model Benchmark":
 else:
     st.markdown(
         "Describe what you want to build in plain English. The system will:\n"
-        "1. **Decompose** your request into pipeline steps using an LLM\n"
-        "2. **Identify** capability categories for each step (text, voice, image, code…)\n"
+        "1. **Break down** your request into pipeline steps\n"
+        "2. **Label** the kind of work each step needs (text, voice, image, code…)\n"
         "3. **Benchmark** candidate models for each step\n"
-        "4. **Recommend** the best model for every step"
+        "4. **Recommend** a model for every step"
     )
 
     # ── Sidebar: workflow configuration ───────────────────────────────────
@@ -189,7 +189,7 @@ else:
             "Decomposer Model",
             ["Qwen/Qwen2.5-7B-Instruct", "meta-llama/Llama-3.1-8B-Instruct"],
             index=0,
-            help="The LLM used to analyse and decompose your request.",
+            help="Model used to break the request into steps.",
         )
 
         st.subheader("Scoring Weights")
@@ -237,7 +237,7 @@ else:
             "cost_weight": cost_w,
         }
         try:
-            with st.spinner("🧠 Decomposing task and benchmarking models… this may take a few minutes."):
+            with st.spinner("🧠 Building the workflow and benchmarking models… this may take a few minutes."):
                 resp = requests.post(f"{API_BASE}/workflow", json=payload, timeout=900)
             if resp.status_code == 200:
                 return resp.json()
@@ -414,5 +414,5 @@ else:
 st.divider()
 st.caption(
     "Open Source Model Evaluation Arena • "
-    "Powered by HuggingFace Inference API, FastAPI, and Streamlit"
+    "Built with HuggingFace Inference API, FastAPI, and Streamlit"
 )

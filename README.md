@@ -1,6 +1,6 @@
 # 🏟️ Open Source Model Evaluation Arena
 
-A production-grade platform for benchmarking multiple HuggingFace models on summarization, QA, coding, and reasoning tasks. Automatically runs evaluation pipelines, compares model outputs, and generates ranked leaderboards based on quality, latency, and cost.
+This project helps you compare Hugging Face models across summarization, question answering, coding, and reasoning tasks. It runs evaluation jobs, collects outputs, scores the results, and produces a leaderboard based on quality, latency, and cost.
 
 ---
 
@@ -36,7 +36,7 @@ User Request (API / Dashboard)
 
 ### Agent Communication
 
-Agents are **stateless** and communicate through typed dataclasses defined in `arena/schemas.py`. The `ExperimentManager` orchestrates the pipeline, passing the output of each agent as input to the next. Long-running experiments can be dispatched to **Celery** workers via Redis.
+Agents are **stateless** and exchange typed dataclasses defined in `arena/schemas.py`. The `ExperimentManager` moves data from one stage to the next. Longer runs can be handed off to **Celery** workers through Redis.
 
 ---
 
@@ -114,7 +114,7 @@ python -m examples.run_evaluation
 uvicorn arena.api.main:app --reload --port 8000
 ```
 
-API docs available at `http://localhost:8000/docs`
+The API docs are available at `http://localhost:8000/docs`.
 
 ### 5. Launch the dashboard
 
@@ -172,7 +172,7 @@ curl -X POST http://localhost:8000/experiments/sync \
 
 ## Configuration
 
-All settings are loaded from environment variables with sensible defaults. See `arena/config.py` or `.env.example` for the full list.
+Settings are loaded from environment variables with sensible defaults. See `arena/config.py` or `.env.example` for the full list.
 
 Key settings:
 - `HF_API_TOKEN` – HuggingFace API token (required for gated models)
